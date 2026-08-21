@@ -61,7 +61,8 @@
 . "$(dirname -- "${BASH_SOURCE[0]}")/fm-composer-lib.sh"
 
 # Busy footers per harness (mirror fm-watch.sh). claude/codex: "esc to
-# interrupt"; opencode: "esc interrupt"; pi: "Working..."; grok: "Ctrl+c:cancel".
+# interrupt"; opencode: "esc interrupt"; pi: "Working..."; Atomic: "∀ ...";
+# OMP: "Working… [esc]"; grok: "Ctrl+c:cancel".
 # Claude's current spinner has a rotating glyph and word, but every active-turn
 # line has an ellipsis followed by a parenthesized elapsed duration. Keep this
 # signature separate from the shared default because that shape is not generic
@@ -76,11 +77,13 @@
 # busy signals on their own.
 # The full moon-phase set remains locale- and emoji-font-sensitive because Kimi
 # exposes no stable ASCII busy token.
-FM_TMUX_BUSY_REGEX_DEFAULT='esc (to )?interrupt|Working\.\.\.|Ctrl\+c:cancel'
+FM_TMUX_BUSY_REGEX_DEFAULT='esc (to )?interrupt|Working\.\.\.|^[[:space:]]*∀[[:space:]].*\.\.\.|Working…[[:space:]]+\[esc\]|Ctrl\+c:cancel'
 FM_TMUX_CLAUDE_BUSY_REGEX_DEFAULT='esc to interrupt|…[[:space:]]+\([0-9]+[smh]'
 FM_TMUX_CODEX_BUSY_REGEX_DEFAULT='esc to interrupt'
 FM_TMUX_OPENCODE_BUSY_REGEX_DEFAULT='esc interrupt'
 FM_TMUX_PI_BUSY_REGEX_DEFAULT='Working\.\.\.'
+FM_TMUX_ATOMIC_BUSY_REGEX_DEFAULT='^[[:space:]]*∀[[:space:]].*\.\.\.'
+FM_TMUX_OMP_BUSY_REGEX_DEFAULT='Working…[[:space:]]+\[esc\]'
 FM_TMUX_GROK_BUSY_REGEX_DEFAULT='Ctrl\+c:cancel'
 FM_TMUX_KIMI_BUSY_REGEX_DEFAULT='^[[:space:]]*(🌑|🌒|🌓|🌔|🌕|🌖|🌗|🌘)[[:space:]]+·[[:space:]]+'
 
@@ -95,6 +98,8 @@ fm_busy_lines_match() {  # [harness]
       codex) regex=$FM_TMUX_CODEX_BUSY_REGEX_DEFAULT ;;
       opencode) regex=$FM_TMUX_OPENCODE_BUSY_REGEX_DEFAULT ;;
       pi|pi-signed) regex=$FM_TMUX_PI_BUSY_REGEX_DEFAULT ;;
+      atomic) regex=$FM_TMUX_ATOMIC_BUSY_REGEX_DEFAULT ;;
+      omp) regex=$FM_TMUX_OMP_BUSY_REGEX_DEFAULT ;;
       grok) regex=$FM_TMUX_GROK_BUSY_REGEX_DEFAULT ;;
       kimi) regex=$FM_TMUX_KIMI_BUSY_REGEX_DEFAULT ;;
       '') regex=$FM_TMUX_BUSY_REGEX_DEFAULT ;;
@@ -141,6 +146,27 @@ fm_tmux_composer_row_state() {  # <raw-row> [bordered] [allow-busy] -> empty|pen
     printf 'empty'; return 0
   fi
   fm_composer_classify_content "$bordered" "$stripped" "${FM_COMPOSER_IDLE_RE:-}" insensitive "$plain"
+}
+
+# OMP 17.2.10 renders the editable text inside the bottom border itself instead
+# of on a side-bounded content row. Admit only its complete adjacent two-row
+# shape, then classify the bounded bottom interior through the shared content
+# owner. Any clipped, non-adjacent, or differently edged shape stays unknown.
+fm_tmux_omp_inline_composer_state() {  # <raw-top-row> <raw-bottom-row> -> verdict or no output
+  local raw_top=$1 raw_bottom=$2 top bottom content
+  top=$(printf '%s\n' "$raw_top" | fm_composer_strip_ansi)
+  top="${top#"${top%%[![:space:]]*}"}"
+  top="${top%"${top##*[![:space:]]}"}"
+  bottom=$(printf '%s\n' "$raw_bottom" | fm_composer_strip_ghost)
+  bottom="${bottom#"${bottom%%[![:space:]]*}"}"
+  bottom="${bottom%"${bottom##*[![:space:]]}"}"
+  case "$top" in '╭──'*'──╮') ;; *) return 1 ;; esac
+  case "$bottom" in '╰─ '*' ─╯') ;; *) return 1 ;; esac
+  content=${bottom#'╰─ '}
+  content=${content%' ─╯'}
+  content="${content#"${content%%[![:space:]]*}"}"
+  content="${content%"${content##*[![:space:]]}"}"
+  fm_composer_classify_content 1 "$content" "${FM_COMPOSER_IDLE_RE:-}" insensitive "$bottom"
 }
 
 fm_tmux_row_has_composer_edge() {  # <plain-row>
@@ -309,11 +335,19 @@ EOF
 # busy-queued Enter conversion.
 fm_tmux_composer_state() {  # <target> -> empty|pending|pending-unproven|unknown
   local target=$1 cy raw pane plain box box_status top bottom geometry_ambiguous
-  local row row_raw state unknown_seen=0
+  local row row_raw state unknown_seen=0 omp_top omp_bottom
   cy=$(tmux display-message -p -t "$target" '#{cursor_y}' 2>/dev/null) || { printf 'unknown'; return 0; }
   case "$cy" in ''|*[!0-9]*) printf 'unknown'; return 0 ;; esac
   pane=$(tmux capture-pane -e -p -t "$target" -S 0 -E - 2>/dev/null) || { printf 'unknown'; return 0; }
   plain=$(printf '%s\n' "$pane" | fm_composer_strip_ansi)
+  if [ "$cy" -gt 0 ]; then
+    omp_top=$(printf '%s\n' "$pane" | sed -n "${cy}p")
+    omp_bottom=$(printf '%s\n' "$pane" | sed -n "$((cy + 1))p")
+    if state=$(fm_tmux_omp_inline_composer_state "$omp_top" "$omp_bottom"); then
+      printf '%s' "$state"
+      return 0
+    fi
+  fi
   if box=$(fm_tmux_find_composer_box "$cy" "$plain"); then
     top=${box%% *}
     box=${box#* }

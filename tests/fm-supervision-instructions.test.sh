@@ -131,6 +131,24 @@ test_pi_signed_preserves_identity_with_pi_supervision_protocol() {
   pass "pi-signed keeps its identity while sharing Pi's supervision protocol"
 }
 
+test_atomic_and_omp_preserve_identity_with_pi_supervision_protocol() {
+  local harness out ordinary
+  for harness in atomic omp; do
+    out=$("$RENDER" --harness "$harness")
+    assert_contains "$out" "primary harness: $harness" \
+      "$harness supervision normalized the visible runtime identity"
+    assert_contains "$out" "Mode: Pi extension background wake." \
+      "$harness did not reuse the Pi-compatible supervision protocol"
+    ordinary=$(printf '%s\n' "$out" | grep -F -- '- Ordinary wake:')
+    assert_contains "$ordinary" "Pi-compatible extension already owns watcher continuity" \
+      "$harness ordinary-wake semantics diverged from the shared extension"
+    out=$("$RENDER" --harness "$harness" --repair-line)
+    assert_contains "$out" "Pi-compatible tool fm_watch_arm_pi" \
+      "$harness repair semantics diverged from the shared extension"
+  done
+  pass "Atomic and OMP keep their identities while sharing Pi-compatible supervision"
+}
+
 test_grok_is_background_notify() {
   local out
   out=$("$RENDER" --harness grok)
@@ -177,6 +195,7 @@ test_conditional_stanzas
 test_repair_lines
 test_cross_harness_ordinary_continuation_and_repair_matrix
 test_pi_signed_preserves_identity_with_pi_supervision_protocol
+test_atomic_and_omp_preserve_identity_with_pi_supervision_protocol
 test_grok_is_background_notify
 test_grok_command_sources_effective_config
 test_pi_snippet_uses_effective_extension_path

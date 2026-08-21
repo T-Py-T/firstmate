@@ -58,7 +58,7 @@ Full detail on every feature lives in [docs/architecture.md](docs/architecture.m
 
 ### Requirements
 
-- A verified primary agent harness: Claude Code, Grok, Pi, `pi-signed`, Codex, or OpenCode.
+- A verified primary agent harness: Claude Code, Grok, Pi, `pi-signed`, Atomic, OMP, Codex, or OpenCode.
 - Git and the GitHub CLI, authenticated through `gh auth login`.
 - The CLI and dependencies for your selected runtime backend; tmux is the reference default.
 
@@ -72,7 +72,9 @@ Claude Code uses a tracked Stop hook for tokenless watcher re-arm and rewake, Gr
 All three have verified turn-end guard paths when launched with their documented setup.
 Pick whichever one matches your subscription and workflow.
 
-Codex and OpenCode are also verified and supported as primary harnesses; Codex uses bounded foreground checkpoints, and OpenCode uses a TUI plugin, so both carry more harness-specific supervision tradeoffs than the three co-primaries.
+Atomic, OMP, Codex, and OpenCode are also verified and supported as primary harnesses.
+Atomic and OMP reuse FirstMate's Pi-compatible watcher and turn-end extensions through their native project discovery paths.
+Codex uses bounded foreground checkpoints, and OpenCode uses a TUI plugin.
 
 ### Install and launch
 
@@ -104,8 +106,23 @@ pi
 FM_PI_HARNESS=pi-signed pi-signed
 ```
 
+**Atomic**
+
+```sh
+atomic --approve
+```
+
+**OMP**
+
+```sh
+omp --auto-approve
+```
+
 For Grok, `--trust` is needed once per clone so project hooks and the turn-end guard load; `/hooks-trust` inside Grok works too.
 For Pi, approve the project trust prompt once per clone on first launch so the tracked `.pi/extensions/*.ts` files auto-load.
+Atomic discovers the tracked Pi-compatible `.pi/extensions/*.ts` adapters and disables only Pi's incompatible Calm presentation extension through `.atomic/settings.json`.
+OMP discovers the tracked `.omp/extensions/*.ts` adapters.
+Approve project-local resources if either runtime prompts on first launch.
 Pi's `/calm` toggle hides supported transcript chrome, including canonically classified Firstmate operational user rows, while retaining native working activity and all model context and session data.
 The hidden operational inputs remain ordinary user-role messages with unchanged delivery, ordering, authority, persistence, and exports.
 The preference persists for the effective Firstmate home, and toggling it off restores ordinary rendering.

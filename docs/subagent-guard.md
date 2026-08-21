@@ -184,7 +184,9 @@ Applicability turns on one question: does the harness expose built-in delegation
 | Codex | none | Not applicable, verified empirically below. Codex 0.144.1 exposes no subagent, sub-task, or delegated-agent tool, so there is nothing to remove or intercept. `.codex/hooks.json` is unchanged. |
 | Grok | present, exact tokens unconfirmed | Not wired pending live verification. See below. |
 | OpenCode | present, exact tokens unconfirmed | Not wired pending live verification. See below. |
-| Pi | none reported | Not wired pending live verification. See below. |
+| Pi / pi-signed | none reported | Shared all-tool guard wired; currently no known native delegation surface. |
+| Atomic 0.9.13 | `subagent` | Shared Pi-compatible `tool_call` guard wired; the primary denies it while linked worker worktrees remain unrestricted. |
+| OMP 17.2.10 | `task` | Shared Pi-compatible `tool_call` guard wired; the primary denies it while linked worker worktrees remain unrestricted. |
 
 ### Codex, verified not applicable
 
@@ -221,7 +223,7 @@ SUBAGENT_TOOL=no
 `multi_tool_use.parallel` batches calls to the tools above; it does not spawn an agent.
 Codex is therefore not applicable today, and this table row is the tripwire: if a future Codex release adds a delegated-agent tool, wire `.codex/hooks.json` the same way its `Bash` PreToolUse entries already forward stdin to a checker.
 
-### Grok, OpenCode, and Pi, inspected but not wired
+### Grok and OpenCode, inspected but not wired
 
 The integration surface of each was inspected and each is structurally wireable for the shipped guard.
 
@@ -230,16 +232,21 @@ The integration surface of each was inspected and each is structurally wireable 
   Grok does expose a delegation surface: `docs/supervision-protocols/grok.md` documents `get_command_or_subagent_output(<task_id>)`, which implies a corresponding dispatch tool.
 - OpenCode's tracked plugins gate on `input?.tool !== "bash"` inside `tool.execute.before`, and block by throwing.
   Swapping that comparison for a call into this checker with `--tool` is the whole change.
-- Pi's tracked extension gates on `event.toolName !== "bash"` inside `pi.on("tool_call", ...)` and blocks by returning `{block: true}`.
-  The same change applies. A parallel evaluation reports that Pi exposes no delegation tool at all, which would make it not applicable, but that was not verified here.
-
-None of the three is wired in this change because none of the three binaries is installed on the host where this work was done, so the exact tool-name tokens could not be confirmed and the wiring could not be validated against the real harness.
+Neither is wired because the exact tool-name tokens have not been confirmed and the wiring has not been validated against the real harness.
 This repo's rule in the `firstmate-coding-guidelines` skill is that a harness hook must be validated in a scratch project before it is trusted, and `arm-pretool-check.md` records the concrete cost of guessing: a Grok hook whose `command` string is even slightly wrong fails to launch the hook at all.
 Wiring an unvalidated matcher would trade a known gap for an unknown breakage.
 
 The bounded follow-up for each is identical to the Codex procedure above.
 On a host with the binary installed, ask the harness to enumerate its tools, then wire the matcher and re-run the live matrix below.
-`bin/fm-subagent-pretool-check.sh` needs no change for any of them: it already accepts Grok's stdin shape and the `--tool` CLI form OpenCode and Pi use, and it already emits the Grok stdout decision object by default.
+`bin/fm-subagent-pretool-check.sh` needs no change for either: it already accepts Grok's stdin shape and the `--tool` CLI form OpenCode uses, and it already emits the Grok stdout decision object by default.
+
+### Pi-compatible all-tool wiring
+
+`.pi/extensions/fm-primary-turnend-guard.ts` sends every `tool_call` name through `bin/fm-subagent-pretool-check.sh --tool` before its bash-only cd and watcher-arm checks.
+Atomic loads that inherited `.pi` implementation directly, and OMP loads it through `.omp/extensions`.
+The checker itself owns primary scoping, so `subagent` and `task` are denied in the main checkout or a marked secondmate home but allowed in a linked crewmate or scout worktree.
+`FM_ALLOW_SUBAGENT=1` remains the explicit session-launch escape hatch.
+Regression coverage invokes the real extension handler with Atomic's `subagent`, OMP's `task`, and an ordinary bash call, and verifies the `--tool` transport and deny result.
 
 ## Live validation record, 2026-07-22
 

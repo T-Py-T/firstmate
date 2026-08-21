@@ -87,6 +87,7 @@ tests/fm-tmux-submit-busy.test.sh
 ```
 
 Expected structural matrix: real text on any content row is pending; all-empty complete boxes are empty; unreadable, incomplete, or unsafe boxes are unknown; and non-bordered panes retain cursor-row compatibility.
+OMP 17.2.10's adjacent two-row composer is the verified bounded exception: its editable content lives inside the rounded bottom-border row, so that exact complete shape classifies empty or pending while clipped and differently edged shapes remain unknown.
 Expected submit matrix: proven pending plus busy is accepted as queued; proven pending plus idle remains pending; ambiguous pending is never converted by the busy exception; and only a proven empty composer succeeds directly.
 
 ### Cleanup endpoint identity

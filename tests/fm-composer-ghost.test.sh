@@ -498,6 +498,22 @@ test_all_tmux_harness_composers_share_classification() {
   pass "fm_tmux_composer_state: all tmux harnesses share empty and pending classification"
 }
 
+test_omp_inline_bottom_composer_classification() {
+  local dir fb capture out
+  dir="$TMP_ROOT/omp-inline-composer"; mkdir -p "$dir"
+  fb=$(make_fake_tmux "$dir")
+  capture="$dir/styled.txt"
+  printf '╭── model · high ──╮\n╰─                  ─╯\n' > "$capture"
+  out=$(PATH="$fb:$PATH" FM_FAKE_STYLED="$capture" FM_FAKE_CY=1 \
+    fm_tmux_composer_state "fakepane")
+  [ "$out" = empty ] || fail "OMP inline bottom composer should be empty, got '$out'"
+  printf '╭── model · high ──╮\n╰─ fix the bug      ─╯\n' > "$capture"
+  out=$(PATH="$fb:$PATH" FM_FAKE_STYLED="$capture" FM_FAKE_CY=1 \
+    fm_tmux_composer_state "fakepane")
+  [ "$out" = pending ] || fail "OMP inline bottom composer with text should be pending, got '$out'"
+  pass "fm_tmux_composer_state: OMP's inline bottom-border composer is classified safely"
+}
+
 test_unrecognized_state_defers_input_guard() {
   (
     # shellcheck disable=SC2329
@@ -620,6 +636,7 @@ test_unproved_empty_geometry_is_unknown
 test_differing_widths_use_asymmetric_verdicts
 test_wide_composer_text_is_pending
 test_all_tmux_harness_composers_share_classification
+test_omp_inline_bottom_composer_classification
 test_unrecognized_state_defers_input_guard
 test_fallback_capture_race_with_edge_is_unknown
 test_legitimate_empty_routes_remain_empty
