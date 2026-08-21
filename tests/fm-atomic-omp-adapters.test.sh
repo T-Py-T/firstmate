@@ -12,14 +12,14 @@ TMP_ROOT=$(fm_test_tmproot fm-atomic-omp-adapters)
 
 test_atomic_marker_wins_over_inherited_parent_markers() {
   local out
-  out=$(ATOMIC_CODING_AGENT=true OMPCODE= CLAUDECODE=1 PI_CODING_AGENT=true "$HARNESS")
+  out=$(ATOMIC_CODING_AGENT=true OMPCODE='' CLAUDECODE=1 PI_CODING_AGENT=true "$HARNESS")
   [ "$out" = atomic ] || fail "Atomic marker was misclassified as '$out'"
   pass "fm-harness: Atomic identity wins over inherited Claude and Pi markers"
 }
 
 test_omp_marker_wins_over_inherited_claude_marker() {
   local out
-  out=$(ATOMIC_CODING_AGENT= OMPCODE=1 CLAUDECODE=1 PI_CODING_AGENT= "$HARNESS")
+  out=$(ATOMIC_CODING_AGENT='' OMPCODE=1 CLAUDECODE=1 PI_CODING_AGENT='' "$HARNESS")
   [ "$out" = omp ] || fail "OMP marker was misclassified as '$out'"
   pass "fm-harness: OMP identity wins over its inherited Claude marker"
 }
@@ -36,9 +36,9 @@ case "$*" in
 esac
 SH
   chmod +x "$fakebin/ps"
-  out=$(PATH="$fakebin:$PATH" FM_FAKE_COMM=atomic ATOMIC_CODING_AGENT= OMPCODE= CLAUDECODE= PI_CODING_AGENT= "$HARNESS")
+  out=$(PATH="$fakebin:$PATH" FM_FAKE_COMM=atomic ATOMIC_CODING_AGENT='' OMPCODE='' CLAUDECODE='' PI_CODING_AGENT='' "$HARNESS")
   [ "$out" = atomic ] || fail "Atomic ancestry was classified as '$out'"
-  out=$(PATH="$fakebin:$PATH" FM_FAKE_COMM=omp ATOMIC_CODING_AGENT= OMPCODE= CLAUDECODE= PI_CODING_AGENT= "$HARNESS")
+  out=$(PATH="$fakebin:$PATH" FM_FAKE_COMM=omp ATOMIC_CODING_AGENT='' OMPCODE='' CLAUDECODE='' PI_CODING_AGENT='' "$HARNESS")
   [ "$out" = omp ] || fail "OMP ancestry was classified as '$out'"
   pass "fm-harness: Atomic and OMP retain process-ancestry fallbacks"
 }
