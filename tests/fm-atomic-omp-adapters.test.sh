@@ -6,6 +6,8 @@ set -u
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 HARNESS="$ROOT/bin/fm-harness.sh"
+LOCK="$ROOT/bin/fm-lock.sh"
+LOCK_LIB="$ROOT/bin/fm-session-lock-lib.sh"
 TMP_ROOT=$(fm_test_tmproot fm-atomic-omp-adapters)
 
 test_atomic_marker_wins_over_inherited_parent_markers() {
@@ -73,10 +75,57 @@ test_runtime_busy_signatures_are_scoped() {
   pass "tmux adapter: Atomic and OMP busy signatures are runtime-scoped"
 }
 
+test_session_lock_accepts_exact_atomic_and_omp_identities() {
+  local fakebin runtime shape comm args state out
+  fakebin=$(fm_fakebin "$TMP_ROOT/session-lock")
+  cat > "$fakebin/ps" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *'comm='*) printf '%s\n' "${FM_FAKE_COMM:?}" ;;
+  *'args='*) printf '%s\n' "${FM_FAKE_ARGS:-}" ;;
+  *'ppid='*) printf '1\n' ;;
+esac
+SH
+  chmod +x "$fakebin/ps"
+  for runtime in atomic omp; do
+    for shape in command interpreter; do
+      if [ "$shape" = command ]; then
+        comm=$runtime
+        args=$runtime
+      else
+        comm=node
+        args="/opt/test/$runtime/dist/cli.js"
+      fi
+      state="$TMP_ROOT/session-lock-$runtime-$shape"
+      mkdir -p "$state"
+      out=$(PATH="$fakebin:$PATH" FM_FAKE_COMM="$comm" FM_FAKE_ARGS="$args" \
+        FM_STATE_OVERRIDE="$state" "$LOCK") \
+        || fail "$runtime $shape identity could not acquire the session lock"
+      assert_contains "$out" "lock acquired: harness pid" \
+        "$runtime $shape lock acquisition omitted its harness pid"
+      printf '%s\n' "$$" > "$state/.lock"
+      out=$(PATH="$fakebin:$PATH" FM_FAKE_COMM="$comm" FM_FAKE_ARGS="$args" \
+        FM_STATE_OVERRIDE="$state" "$LOCK" status)
+      assert_contains "$out" "lock: held by live harness pid $$" \
+        "$runtime $shape holder was not recognized as live"
+    done
+    if PATH="$fakebin:$PATH" FM_FAKE_COMM="$runtime-helper" FM_FAKE_ARGS="$runtime-helper" \
+      bash -c '. "$1"; fm_harness_pid_alive "$$"' _ "$LOCK_LIB"; then
+      fail "$runtime helper command was accepted as an exact session-lock identity"
+    fi
+    if PATH="$fakebin:$PATH" FM_FAKE_COMM=node FM_FAKE_ARGS="/opt/test/$runtime-helper/dist/cli.js" \
+      bash -c '. "$1"; fm_harness_pid_alive "$$"' _ "$LOCK_LIB"; then
+      fail "$runtime helper interpreter path was accepted as an exact session-lock identity"
+    fi
+  done
+  pass "session lock: exact Atomic and OMP commands and interpreters acquire and stay live"
+}
+
 test_atomic_marker_wins_over_inherited_parent_markers
 test_omp_marker_wins_over_inherited_claude_marker
 test_atomic_and_omp_process_ancestry_fallbacks
 test_runtime_project_extension_shims_exist
 test_runtime_busy_signatures_are_scoped
+test_session_lock_accepts_exact_atomic_and_omp_identities
 
 echo "# all Atomic and OMP adapter tests passed"

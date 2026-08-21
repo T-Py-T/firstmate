@@ -153,15 +153,32 @@ fm_tmux_composer_row_state() {  # <raw-row> [bordered] [allow-busy] -> empty|pen
 # shape, then classify the bounded bottom interior through the shared content
 # owner. Any clipped, non-adjacent, or differently edged shape stays unknown.
 fm_tmux_omp_inline_composer_state() {  # <raw-top-row> <raw-bottom-row> -> verdict or no output
-  local raw_top=$1 raw_bottom=$2 top bottom content
+  local raw_top=$1 raw_bottom=$2 top bottom bottom_plain content top_indent bottom_indent
+  local top_geometry bottom_geometry
   top=$(printf '%s\n' "$raw_top" | fm_composer_strip_ansi)
+  bottom_plain=$(printf '%s\n' "$raw_bottom" | fm_composer_strip_ansi)
+  top_indent=${top%%[![:space:]]*}
+  bottom_indent=${bottom_plain%%[![:space:]]*}
   top="${top#"${top%%[![:space:]]*}"}"
   top="${top%"${top##*[![:space:]]}"}"
+  bottom_plain="${bottom_plain#"${bottom_plain%%[![:space:]]*}"}"
+  bottom_plain="${bottom_plain%"${bottom_plain##*[![:space:]]}"}"
   bottom=$(printf '%s\n' "$raw_bottom" | fm_composer_strip_ghost)
   bottom="${bottom#"${bottom%%[![:space:]]*}"}"
   bottom="${bottom%"${bottom##*[![:space:]]}"}"
   case "$top" in '╭──'*'──╮') ;; *) return 1 ;; esac
-  case "$bottom" in '╰─ '*' ─╯') ;; *) return 1 ;; esac
+  case "$bottom_plain" in '╰─ '*' ─╯') ;; *) return 1 ;; esac
+  [ "$top_indent" = "$bottom_indent" ] || return 1
+  top_geometry=${top#╭}
+  top_geometry=${top_geometry%╮}
+  top_geometry=${top_geometry//─/ }
+  top_geometry=${top_geometry//·/ }
+  bottom_geometry=${bottom_plain#╰}
+  bottom_geometry=${bottom_geometry%╯}
+  bottom_geometry=${bottom_geometry//─/ }
+  top_geometry=$(fm_tmux_composer_geometry_spaces "$top_geometry") || return 1
+  bottom_geometry=$(fm_tmux_composer_geometry_spaces "$bottom_geometry") || return 1
+  [ "$top_geometry" = "$bottom_geometry" ] || return 1
   content=${bottom#'╰─ '}
   content=${content%' ─╯'}
   content="${content#"${content%%[![:space:]]*}"}"

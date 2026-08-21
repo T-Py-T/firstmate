@@ -503,14 +503,22 @@ test_omp_inline_bottom_composer_classification() {
   dir="$TMP_ROOT/omp-inline-composer"; mkdir -p "$dir"
   fb=$(make_fake_tmux "$dir")
   capture="$dir/styled.txt"
-  printf '╭── model · high ──╮\n╰─                  ─╯\n' > "$capture"
-  out=$(PATH="$fb:$PATH" FM_FAKE_STYLED="$capture" FM_FAKE_CY=1 \
+  printf '╭─── model · high ───╮\n╰─                  ─╯\n' > "$capture"
+  out=$(PATH="$fb:$PATH" LC_ALL=C FM_FAKE_STYLED="$capture" FM_FAKE_CY=1 \
     fm_tmux_composer_state "fakepane")
   [ "$out" = empty ] || fail "OMP inline bottom composer should be empty, got '$out'"
-  printf '╭── model · high ──╮\n╰─ fix the bug      ─╯\n' > "$capture"
-  out=$(PATH="$fb:$PATH" FM_FAKE_STYLED="$capture" FM_FAKE_CY=1 \
+  printf '╭─── model · high ───╮\n╰─ fix the bug      ─╯\n' > "$capture"
+  out=$(PATH="$fb:$PATH" LC_ALL=C FM_FAKE_STYLED="$capture" FM_FAKE_CY=1 \
     fm_tmux_composer_state "fakepane")
   [ "$out" = pending ] || fail "OMP inline bottom composer with text should be pending, got '$out'"
+  printf '╭─── model · high ───╮\n ╰─                  ─╯\n' > "$capture"
+  out=$(PATH="$fb:$PATH" LC_ALL=C FM_FAKE_STYLED="$capture" FM_FAKE_CY=1 \
+    fm_tmux_composer_state "fakepane")
+  [ "$out" = unknown ] || fail "misindented OMP inline composer should be unknown, got '$out'"
+  printf '╭─── model · high ───╮\n╰─                ─╯\n' > "$capture"
+  out=$(PATH="$fb:$PATH" LC_ALL=C FM_FAKE_STYLED="$capture" FM_FAKE_CY=1 \
+    fm_tmux_composer_state "fakepane")
+  [ "$out" = unknown ] || fail "mismatched-width OMP inline composer should be unknown, got '$out'"
   pass "fm_tmux_composer_state: OMP's inline bottom-border composer is classified safely"
 }
 

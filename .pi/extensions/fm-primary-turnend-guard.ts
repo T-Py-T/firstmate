@@ -83,9 +83,9 @@ function runGuard(): Promise<{ code: number; stderr: string }> {
 // pi.on("tool_call", ...) can block (verified 2026-07-09 against pi 0.80.5:
 // returning {block: true} prevents the bash command from running). Each owner
 // script owns its own decision and is inert outside the real primary checkout.
-function runChecker(script: string, command: string): Promise<{ code: number; stderr: string }> {
+function runChecker(script: string, args: string[]): Promise<{ code: number; stderr: string }> {
   return new Promise((resolveResult) => {
-    const child = spawn(`${root}/bin/${script}`, ["--command", command], {
+    const child = spawn(`${root}/bin/${script}`, args, {
       stdio: ["ignore", "ignore", "pipe"],
     });
     let stderr = "";
@@ -98,25 +98,15 @@ function runChecker(script: string, command: string): Promise<{ code: number; st
 }
 
 function runPretoolCheck(command: string): Promise<{ code: number; stderr: string }> {
-  return runChecker("fm-arm-pretool-check.sh", command);
+  return runChecker("fm-arm-pretool-check.sh", ["--command", command]);
 }
 
 function runCdCheck(command: string): Promise<{ code: number; stderr: string }> {
-  return runChecker("fm-cd-pretool-check.sh", command);
+  return runChecker("fm-cd-pretool-check.sh", ["--command", command]);
 }
 
 function runDelegationCheck(toolName: string): Promise<{ code: number; stderr: string }> {
-  return new Promise((resolveResult) => {
-    const child = spawn(`${root}/bin/fm-subagent-pretool-check.sh`, ["--tool", toolName], {
-      stdio: ["ignore", "ignore", "pipe"],
-    });
-    let stderr = "";
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    child.on("error", () => resolveResult({ code: 0, stderr: "" }));
-    child.on("close", (code) => resolveResult({ code: code ?? 0, stderr }));
-  });
+  return runChecker("fm-subagent-pretool-check.sh", ["--tool", toolName]);
 }
 
 export default function (pi: ExtensionAPI) {
