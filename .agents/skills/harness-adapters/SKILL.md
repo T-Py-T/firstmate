@@ -304,7 +304,7 @@ The firstmate PRIMARY's own `.pi/extensions/fm-primary-turnend-guard.ts` listens
 Without `deliverAs: "followUp"`, Pi rejects the send while the agent is still processing.
 Pi's primary watcher protocol also requires the tracked `.pi/extensions/fm-primary-pi-watch.ts` extension, same trust-once discovery as the turn-end guard.
 The model arms through `fm_watch_arm_pi`, never a foreground bash arm; the watcher tool result and clean-exit fallback are owned by `docs/supervision-protocols/pi.md`.
-`bin/fm-session-start.sh` reports when the live Pi-family session has not loaded both the turn-end guard and watcher extensions, and points at the selected executable after project trust as the fix, with `-e` as a trust-free fallback.
+`bin/fm-session-start.sh` reports when the live Pi-compatible session has not loaded both the turn-end guard and watcher extensions, and points at the selected executable after project trust as the fix, with `-e` as a trust-free fallback.
 When a secondmate is launched on Pi, pi-signed, or Atomic, `fm-spawn.sh --secondmate` launches the selected executable with both shared `.pi/extensions` paths already present in the secondmate home's git worktree.
 OMP secondmates use the corresponding `.omp/extensions` shim paths so native discovery and explicit loading resolve to the same files.
 
@@ -312,7 +312,7 @@ OMP secondmates use the corresponding `.omp/extensions` shim paths so native dis
 
 | Fact | Value |
 |---|---|
-| Busy-pane signature | A line beginning with `∀ ` and ending in the observed `...` activity form. |
+| Busy-pane signature | A line beginning with `∀ ` and containing the observed `...` activity form. |
 | Exit command | `/exit` or `/quit` |
 | Interrupt | single Escape |
 | Autonomy | `--approve` |

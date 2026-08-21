@@ -1347,9 +1347,10 @@ EOF
       exclude_path '.opencode/plugins/fm-turn-end.js'
       ;;
     pi|pi-signed|atomic|omp)
-      # Written OUTSIDE the worktree: pi's project-trust gate fires on any extension
+      # Written OUTSIDE the worktree: Pi's project-trust gate fires on any extension
       # loaded from inside the project (verified live), but an explicit -e path
-      # elsewhere loads without a dialog. Lives in state/, cleaned by teardown.
+      # elsewhere loads without a dialog. The other Pi-compatible worker adapters
+      # share this trust-free path. Lives in state/, cleaned by teardown.
       cat > "$STATE/$ID.pi-ext.ts" <<EOF
 // Firstmate Pi-compatible turn-end signal; written by fm-spawn.
 // Use "turn_end" (fires after each turn the agent finishes), not "agent_end"
