@@ -46,11 +46,14 @@ pi -p -e .pi/extensions/fm-primary-turnend-guard.ts \
 Observed result: `PI_SMOKE_DONE`, with one session-start execution.
 The earlier `sendUserMessage` counterfactual raced the positional prompt; the current non-triggering `pi.sendMessage` custom message did not.
 The installed pi-signed 0.82.0 wrapper repeated the Pi primary extension and session-start path on 2026-07-27.
+Atomic 0.9.13 loaded the inherited `.pi` implementations and OMP 17.2.10 loaded the same session-start, turn-end, and watcher implementations through its tracked runtime-specific project shims on 2026-08-21.
+Atomic required `.atomic/settings.json` to exclude the Pi-only Calm extension; without that exclusion Atomic rejected the inherited module with `factory is not a function`.
 [`runtime-backends.md`](runtime-backends.md#tmux) owns the shared-ancestry evidence and authoritative selection-marker boundary.
 
 Current deterministic and live entry points:
 
 ```sh
+tests/fm-atomic-omp-adapters.test.sh
 tests/fm-sessionstart-nudge.test.sh
 tests/fm-captain-translation-contract.test.sh
 FM_PI_LIVE_E2E=1 tests/fm-pi-primary-live-e2e.test.sh
@@ -63,14 +66,14 @@ The detailed reconciliation and task chronology stay in the private audit report
 
 ## Turn-end guard
 
-The direct and passive mechanisms were validated across all five harnesses on 2026-07-08 through 2026-07-12, with Claude's replacement Stop-owned path revalidated on 2026-07-24.
+The original five direct and passive harness paths were validated on 2026-07-08 through 2026-07-12, with Claude's replacement Stop-owned path revalidated on 2026-07-24 and Atomic and OMP reuse of the Pi-compatible path verified on 2026-08-21.
 
 | Harness | Version verified | Mechanism | Observed result |
 | --- | --- | --- | --- |
 | Claude | 2.1.219 | Cooperative blocking `Stop` guard plus `asyncRewake` auto-arm | A fresh unsupervised session ran session start first, reclaimed a stale dead-owner lock, completed two tokenless rewake cycles with no model arm command or guard continuation, and left a competing live owner unchanged. |
 | Codex | 0.142.1 | Blocking `Stop` hook | Hook process root stayed anchored to the trusted checkout and one continuation ran. |
 | OpenCode | 1.17.6 | Passive `session.idle` callback | Throwing could not block, while `promptAsync` scheduled one TUI follow-up; headless remained fail-open. |
-| Pi | 0.80.5 | Passive `agent_settled` callback | Exactly one guard follow-up ran for an unhealthy cycle, with no recursion across tool turns. |
+| Pi-compatible | Pi 0.80.5, Atomic 0.9.13, OMP 17.2.10 | Passive `agent_settled` callback | Exactly one guard follow-up ran for an unhealthy cycle, with no recursion across tool turns; Atomic `subagent` and OMP `task` calls reached the shared delegation guard before bash-only checks. |
 | Grok | 0.2.112 native and 0.2.73 pre-native | Running-payload adaptive `Stop` | Native false-to-true continuation stayed in one process with two model turns and zero resume launches; the field-absent pre-native process launched exactly one guarded resume. |
 
 The Grok adaptive matrix ran on 2026-07-28 with separate scratch repositories and homes, dedicated tmux sockets, one target plus one control window, ambient tmux variables removed, and a socket-bound wrapper first in `PATH`.
@@ -113,6 +116,7 @@ ok - Claude 2.1.219 (Claude Code) live E2E reclaimed a stale session lock throug
 Current entry points:
 
 ```sh
+tests/fm-atomic-omp-adapters.test.sh
 tests/fm-turnend-guard.test.sh
 tests/fm-supervision-instructions.test.sh
 FM_PI_LIVE_E2E=1 tests/fm-pi-primary-live-e2e.test.sh
@@ -152,11 +156,13 @@ tests/fm-pi-primary-types.test.sh
 
 Observed guarantee: after ordinary `session_shutdown` for `/new`, `/resume`, and `/fork`, plus same-instance shutdown-plus-start, the replacement generation armed again without a Pi restart and without the `watcher: not armed - Pi session is shutting down` refusal.
 Stale prior-generation tool callbacks could not mutate the active child, repeated transitions kept exactly one live arm cycle, and terminal `quit` still refused late rearm.
-Plain Pi and pi-signed share the same tracked `.pi/extensions/fm-primary-pi-watch.ts` path, so both inherit the generation owner; other primary harnesses are not applicable because they do not use this Pi extension lifecycle.
+Plain Pi, pi-signed, and Atomic load the same tracked `.pi/extensions/fm-primary-pi-watch.ts` path, while OMP loads its tracked shim to that implementation, so all four inherit the same generation owner.
+Other primary harnesses are not applicable because they do not use this Pi-compatible extension lifecycle.
 
 Deterministic entry points:
 
 ```sh
+tests/fm-atomic-omp-adapters.test.sh
 tests/fm-pi-watch-extension.test.sh
 tests/fm-pi-primary-types.test.sh
 tests/fm-watcher-lock.test.sh

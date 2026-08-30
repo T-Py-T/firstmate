@@ -422,6 +422,72 @@ test_pi_signed_persistent_secondmate_uses_pi_extensions_and_identity() {
   pass "pi-signed is a distinct persistent secondmate runtime with shared Pi supervision semantics"
 }
 
+test_atomic_threads_model_thinking_and_worker_extension() {
+  local rec id out status launch
+  id=profile-atomic-z8e
+  rec=$(make_spawn_case profile-atomic atomic "$id")
+  read_case_record "$rec"
+
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" \
+    --model openai-codex/gpt-5.6-sol --effort max)
+  status=$?
+  expect_code 0 "$status" "Atomic spawn with model and thinking should succeed"
+  assert_meta_profile "$HOME_DIR/state/$id.meta" atomic openai-codex/gpt-5.6-sol max
+  launch=$(cat "$LAUNCH_LOG")
+  assert_contains "$launch" "atomic --approve --model 'openai-codex/gpt-5.6-sol' --thinking 'max' -e '$HOME_DIR/state/$id.pi-ext.ts'" \
+    "Atomic launch did not use verified autonomy, model, thinking, and extension flags"
+  assert_contains "$launch" "fm-operational-input.sh' encode launch-brief" \
+    "Atomic launch lost the canonical typed brief"
+  pass "Atomic worker launches with verified Pi-compatible profile and turn-end flags"
+}
+
+test_omp_threads_model_thinking_and_worker_extension() {
+  local rec id out status launch
+  id=profile-omp-z8f
+  rec=$(make_spawn_case profile-omp omp "$id")
+  read_case_record "$rec"
+
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" \
+    --model openai-codex/gpt-5.6-sol --effort max)
+  status=$?
+  expect_code 0 "$status" "OMP spawn with model and thinking should succeed"
+  assert_meta_profile "$HOME_DIR/state/$id.meta" omp openai-codex/gpt-5.6-sol max
+  launch=$(cat "$LAUNCH_LOG")
+  assert_contains "$launch" "omp --auto-approve --model 'openai-codex/gpt-5.6-sol' --thinking 'max' -e '$HOME_DIR/state/$id.pi-ext.ts'" \
+    "OMP launch did not use verified autonomy, model, thinking, and extension flags"
+  assert_contains "$launch" "fm-operational-input.sh' encode launch-brief" \
+    "OMP launch lost the canonical typed brief"
+  pass "OMP worker launches with verified Pi-compatible profile and turn-end flags"
+}
+
+test_atomic_and_omp_secondmates_load_both_primary_extensions() {
+  local harness flag extensions rec id sm out status launch
+  for harness in atomic omp; do
+    id="profile-$harness-secondmate-z8g"
+    rec=$(make_spawn_case "profile-$harness-secondmate" codex "$id")
+    read_case_record "$rec"
+    printf '%s\n' "$harness" > "$HOME_DIR/config/secondmate-harness"
+    sm="$CASE_DIR/secondmate-home"
+    make_seeded_secondmate_home "$sm" "$id"
+    sm=$(cd "$sm" && pwd -P)
+    out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$sm" --secondmate)
+    status=$?
+    expect_code 0 "$status" "$harness persistent secondmate spawn should succeed"
+    assert_contains "$out" "spawned $id harness=$harness kind=secondmate" \
+      "$harness secondmate spawn did not preserve its runtime identity"
+    launch=$(cat "$LAUNCH_LOG")
+    if [ "$harness" = atomic ]; then flag='--approve'; else flag='--auto-approve'; fi
+    if [ "$harness" = atomic ]; then
+      extensions=".pi"
+    else
+      extensions=".omp"
+    fi
+    assert_contains "$launch" "$harness $flag -e '$sm/$extensions/extensions/fm-primary-turnend-guard.ts' -e '$sm/$extensions/extensions/fm-primary-pi-watch.ts'" \
+      "$harness secondmate did not load both shared primary extensions"
+  done
+  pass "Atomic and OMP persistent secondmates load both FirstMate primary extensions"
+}
+
 test_batch_forwards_shared_profile_flags() {
   local rec id1 id2 out status
   id1=profile-batch-a-z9
@@ -525,6 +591,9 @@ test_pi_threads_model_and_max_effort
 test_pi_signed_threads_shared_pi_profile_and_preserves_identity
 test_pi_signed_missing_binary_refuses_before_endpoint_or_metadata
 test_pi_signed_persistent_secondmate_uses_pi_extensions_and_identity
+test_atomic_threads_model_thinking_and_worker_extension
+test_omp_threads_model_thinking_and_worker_extension
+test_atomic_and_omp_secondmates_load_both_primary_extensions
 test_batch_forwards_shared_profile_flags
 test_claude_forwards_firstmate_config_dir_when_set
 test_claude_omits_config_dir_prefix_when_unset

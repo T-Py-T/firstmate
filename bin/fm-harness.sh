@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Detect the agent harness this process tree runs on.
-# Usage: fm-harness.sh                  print own harness: claude|codex|opencode|pi|pi-signed|grok|kimi|unknown
+# Usage: fm-harness.sh                  print own harness: claude|codex|opencode|pi|pi-signed|atomic|omp|grok|kimi|unknown
 #        fm-harness.sh crew             print the effective CREWMATE harness
 #                                        (config/crew-harness; "default" resolves to own)
 #        fm-harness.sh secondmate       print the harness the PRIMARY uses to launch
@@ -30,11 +30,15 @@ CONFIG="${FM_CONFIG_OVERRIDE:-$FM_HOME/config}"
 detect_own() {
   # Layer 1: environment markers for verified harnesses.
   # Keep marker detection before ancestry detection as an explicit precedence rule.
-  # Only claude, pi, and grok set verified markers of their own; codex, opencode,
-  # and kimi are markerless, so a foreign marker retained in a terminal
+  # Atomic and OMP must precede the parent markers they inherit: Atomic can retain
+  # Pi/Claude markers, while OMP 17.2.10 explicitly retains CLAUDECODE=1 alongside
+  # its own OMPCODE=1 marker. Codex, OpenCode, and Kimi are markerless, so a foreign
+  # marker retained in a terminal
   # multiplexer's stored environment can silently misidentify one of them before
   # ancestry is consulted. This is a precedence hazard, not evidence that
   # CLAUDECODE inheritance into a kimi child was observed; it was not observed.
+  [ "${ATOMIC_CODING_AGENT:-}" = "true" ] && { echo atomic; return; }
+  [ "${OMPCODE:-}" = "1" ] && { echo omp; return; }
   [ "${CLAUDECODE:-}" = "1" ] && { echo claude; return; }
   if [ "${PI_CODING_AGENT:-}" = "true" ]; then
     if [ "${FM_PI_HARNESS:-}" = pi-signed ]; then echo pi-signed; else echo pi; fi
@@ -49,6 +53,8 @@ detect_own() {
   for _ in 1 2 3 4 5 6 7 8; do
     comm=$(ps -o comm= -p "$pid" 2>/dev/null) || break
     case "$(basename "$comm")" in
+      atomic) echo atomic; return ;;
+      omp) echo omp; return ;;
       *claude*) echo claude; return ;;
       *codex*) echo codex; return ;;
       *opencode*) echo opencode; return ;;

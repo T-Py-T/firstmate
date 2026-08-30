@@ -1,0 +1,6 @@
+{
+  "extensions": [
+    "extensions",
+    "!**/fm-calm.ts"
+  ]
+}

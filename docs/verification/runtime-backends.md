@@ -31,6 +31,7 @@ A persistent parent shell waiting for a child remained reported as the parent pr
 Claude, Codex, OpenCode, and Grok were observed under their own process names.
 Kimi Code CLI 0.29.1 was observed under `kimi` on 2026-07-25.
 Pi and pi-signed 0.82.0 were reverified on 2026-07-27 through real isolated `fm-spawn.sh` launches.
+Atomic 0.9.13 and OMP 17.2.10 exact process-name liveness and runtime-scoped busy classifications were pinned on 2026-08-21 by the focused adapter and secondmate-liveness suites.
 
 Installed-wrapper checks:
 
@@ -74,9 +75,16 @@ Firstmate therefore sets the exact `FM_PI_HARNESS` selection marker on both work
 Both recorded runtime identities now classify the exact `pi-launcher` foreground command as `alive`.
 
 Backend applicability was reviewed across every spawn adapter.
-Tmux needs the exact `pi-launcher`, `pi-signed`, `pi`, and `Pi` process identities for recovery-grade liveness.
+Tmux needs the exact `atomic`, `omp`, `pi-launcher`, `pi-signed`, `pi`, and `Pi` process identities for recovery-grade liveness.
 Herdr uses native registered-agent state and needs no process-name branch.
 Zellij has no verified recovery-grade agent process probe, while Orca and cmux do not support secondmate spawns, so those three retain their existing generic ordinary-launch semantics without a new liveness matcher.
+
+Focused Atomic and OMP entry points:
+
+```sh
+tests/fm-atomic-omp-adapters.test.sh
+tests/fm-secondmate-liveness.test.sh
+```
 
 The structural multi-row composer reader, Kimi pointer-delivery path, and OpenCode 1.18.4 busy-queue behavior are pinned by:
 
@@ -87,6 +95,7 @@ tests/fm-tmux-submit-busy.test.sh
 ```
 
 Expected structural matrix: real text on any content row is pending; all-empty complete boxes are empty; unreadable, incomplete, or unsafe boxes are unknown; and non-bordered panes retain cursor-row compatibility.
+OMP 17.2.10's adjacent two-row composer is the verified bounded exception: its editable content lives inside the rounded bottom-border row, so that exact complete shape classifies empty or pending while clipped and differently edged shapes remain unknown.
 Expected submit matrix: proven pending plus busy is accepted as queued; proven pending plus idle remains pending; ambiguous pending is never converted by the busy exception; and only a proven empty composer succeeds directly.
 
 ### Cleanup endpoint identity
@@ -115,7 +124,7 @@ ok - fm-teardown: dedicated-socket invalid cleanup preserves target/control and 
 The dedicated tmux cell removed ambient tmux variables, required a socket-bound wrapper, kept one target and one independent control window, and proved the wrapper was not called for invalid metadata or a direct empty target.
 Valid cleanup removed only the exact task-bound target and left the control window live.
 The metadata-only validation covers tmux, Herdr, Zellij, Orca, and cmux before backend dispatch.
-Claude, Codex, OpenCode, Pi, pi-signed, Grok, and Kimi share that backend cleanup boundary; their harness-specific hook files and token cleanup run only after it, so no harness needs a separate endpoint parser.
+Claude, Codex, OpenCode, Pi, pi-signed, Atomic, OMP, Grok, and Kimi share that backend cleanup boundary; their harness-specific hook files and token cleanup run only after it, so no harness needs a separate endpoint parser.
 
 ## Herdr
 

@@ -896,9 +896,64 @@ test_pi_extension_forces_followup() {
   assert_contains "$content" 'lockOwnership' "pi extension loaded marker must respect the session lock"
   assert_contains "$content" 'const command = String((event.input as { command?: unknown })?.command ?? "")' "pi extension changed bash command extraction for the PreToolUse contract"
   assert_contains "$content" 'runPretoolCheck(command)' "pi extension changed the PreToolUse checker invocation"
+  assert_contains "$content" 'fm-subagent-pretool-check.sh' "pi-compatible extension must invoke the shared delegation guard"
+  assert_contains "$content" 'runDelegationCheck(String(event.toolName ?? ""))' "pi-compatible extension must inspect every tool call before bash-only seatbelts"
   assert_contains "$content" 'return { block: true, reason:' "pi extension changed the checker exit-2 block result"
   assert_not_contains "$content" 'Run bin/fm-watch-arm.sh as a background task' "pi extension must not hardcode the old watcher-arm instruction"
   pass ".pi primary extension: agent_settled forces one follow-up through the shared guard"
+}
+
+test_pi_extension_blocks_native_delegation_tools_before_bash_checks() {
+  local repo home ext calls out status
+  repo="$TMP_ROOT/pi-delegation-root"
+  home="$TMP_ROOT/pi-delegation-home"
+  ext="$repo/.pi/extensions/fm-primary-turnend-guard.ts"
+  calls="$TMP_ROOT/pi-delegation-calls.log"
+  mkdir -p "$repo/.pi/extensions/lib" "$repo/bin" "$home/state"
+  cp "$ROOT/.pi/extensions/fm-primary-turnend-guard.ts" "$ext"
+  cp "$ROOT/.pi/extensions/lib/fm-operational-input.ts" "$repo/.pi/extensions/lib/fm-operational-input.ts"
+  cp "$ROOT/bin/fm-operational-input.sh" "$repo/bin/fm-operational-input.sh"
+  cat > "$repo/bin/fm-subagent-pretool-check.sh" <<'SH'
+#!/usr/bin/env bash
+printf 'delegation-transport:%s\n' "$1" >> "${FM_PRETOOL_CALLS:?}"
+printf 'delegation:%s\n' "$2" >> "${FM_PRETOOL_CALLS:?}"
+case "$2" in subagent|task) printf 'native delegation denied\n' >&2; exit 2 ;; esac
+exit 0
+SH
+  for script in fm-turnend-guard.sh fm-sessionstart-nudge.sh fm-arm-pretool-check.sh fm-cd-pretool-check.sh; do
+    cat > "$repo/bin/$script" <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+    chmod +x "$repo/bin/$script"
+  done
+  chmod +x "$repo/bin/fm-subagent-pretool-check.sh"
+  out=$(PLUGIN="$ext" FM_HOME="$home" FM_PRETOOL_CALLS="$calls" node --input-type=module 2>&1 <<'EOF'
+import { pathToFileURL } from "node:url";
+const handlers = new Map();
+const pi = { on(event, handler) { handlers.set(event, handler); } };
+const mod = await import(pathToFileURL(process.env.PLUGIN).href);
+mod.default(pi);
+const toolCall = handlers.get("tool_call");
+if (!toolCall) throw new Error("tool_call handler was not registered");
+for (const toolName of ["subagent", "task"]) {
+  const result = await toolCall({ type: "tool_call", toolName, input: {} });
+  if (!result?.block || !result.reason.includes("native delegation denied")) {
+    throw new Error(`${toolName} bypassed the shared delegation guard`);
+  }
+}
+const bash = await toolCall({ type: "tool_call", toolName: "bash", input: { command: "pwd" } });
+if (bash?.block) throw new Error("ordinary bash was unexpectedly blocked");
+EOF
+)
+  status=$?
+  expect_code 0 "$status" "Pi-compatible extension must block Atomic and OMP native delegation tools"
+  [ -z "$out" ] || fail "Pi-compatible delegation guard test printed output: $out"
+  assert_grep 'delegation:subagent' "$calls" "Atomic subagent call did not reach the shared delegation guard"
+  assert_grep 'delegation:task' "$calls" "OMP task call did not reach the shared delegation guard"
+  assert_grep 'delegation:bash' "$calls" "bash call did not pass through delegation classification first"
+  assert_grep 'delegation-transport:--tool' "$calls" "extension used the wrong shared-checker transport"
+  pass ".pi primary extension: Atomic subagent and OMP task cannot bypass FirstMate dispatch"
 }
 
 test_pi_extension_injects_once_per_logical_agent_run() {
@@ -1231,6 +1286,7 @@ test_codex_hook_ignores_nested_git_root_guard
 test_opencode_plugin_forces_followup
 test_opencode_plugin_anchors_guard_to_worktree
 test_pi_extension_forces_followup
+test_pi_extension_blocks_native_delegation_tools_before_bash_checks
 test_pi_extension_injects_once_per_logical_agent_run
 test_pi_extension_retries_after_followup_delivery_failure
 test_grok_hook_invokes_adapter

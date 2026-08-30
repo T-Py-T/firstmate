@@ -82,7 +82,7 @@ fi
 
 case "$HARNESS" in
   claude|codex|opencode|pi|grok) SNIPPET="$DOC_DIR/$HARNESS.md" ;;
-  pi-signed) SNIPPET="$DOC_DIR/pi.md" ;;
+  pi-signed|atomic|omp) SNIPPET="$DOC_DIR/pi.md" ;;
   *) HARNESS=unknown; SNIPPET="$DOC_DIR/unknown.md" ;;
 esac
 [ -f "$SNIPPET" ] || SNIPPET="$DOC_DIR/unknown.md"
@@ -143,6 +143,9 @@ repair_line() {
     pi|pi-signed)
       printf '%s%s%s%s%s%s\n' "$prefix" 'repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e ' "$pi_turnend_ext" ' -e ' "$pi_ext" ' if the extensions are not loaded.'
       ;;
+    atomic|omp)
+      printf '%s%s%s%s%s%s\n' "$prefix" 'repair a missing or failed watcher cycle with the Pi-compatible tool fm_watch_arm_pi, or restart this harness with -e ' "$pi_turnend_ext" ' -e ' "$pi_ext" ' if the extensions are not loaded.'
+      ;;
     opencode)
       printf '%s%s\n' "$prefix" 'repair missing watcher supervision by letting the OpenCode TUI plugin arm after idle; use bin/fm-watch-arm.sh only as a manual recovery probe if the plugin reports failure.'
       ;;
@@ -165,6 +168,9 @@ ordinary_wake_line() {
       ;;
     pi|pi-signed)
       printf '%s\n' '- Ordinary wake: the Pi extension already owns watcher continuity; do not arm another cycle.'
+      ;;
+    atomic|omp)
+      printf '%s\n' '- Ordinary wake: the Pi-compatible extension already owns watcher continuity; do not arm another cycle.'
       ;;
     opencode)
       printf '%s\n' '- Ordinary wake: the OpenCode TUI plugin already owns watcher continuity; do not arm manually.'

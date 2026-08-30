@@ -9,7 +9,8 @@
 # This file is sourced by scripts and has no side effects on source.
 
 # Known harness command names; extend when a new adapter is verified.
-FM_HARNESS_RE='claude|codex|opencode|grok|kimi|^pi$|^pi-signed$'
+FM_HARNESS_RE='claude|codex|opencode|grok|kimi|^pi$|^pi-signed$|^atomic$|^omp$'
+FM_HARNESS_INTERPRETER_RE="$FM_HARNESS_RE|(^|[[:space:]/])(atomic|omp)([[:space:]/]|$)"
 
 # Walk the current process ancestry (up to 16 hops) and print a harness pid.
 # For every harness except Claude, the first match wins (innermost pid), which
@@ -40,7 +41,7 @@ fm_harness_ancestry_pid() {
       # Bare interpreter (e.g. node): match the harness name in its script path.
       case "$comm" in
         *node*|*python*)
-          if printf '%s' "$args" | grep -qE "$FM_HARNESS_RE"; then
+          if printf '%s' "$args" | grep -qE "$FM_HARNESS_INTERPRETER_RE"; then
             hit=1
             case "$args" in *claude*) is_claude=1 ;; esac
           fi
@@ -75,7 +76,7 @@ fm_harness_pid_alive() {
   case "$comm" in
     *node*|*python*)
       args=$(ps -o args= -p "$pid" 2>/dev/null)
-      printf '%s' "$args" | grep -qE "$FM_HARNESS_RE"
+      printf '%s' "$args" | grep -qE "$FM_HARNESS_INTERPRETER_RE"
       ;;
     *) return 1 ;;
   esac
